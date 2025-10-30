@@ -10,6 +10,9 @@
 	"compatibility_flags": [
 		"nodejs_als"
 	],
+	"build": {
+		"command": "npm run build"
+	},
 	"routes": [
 		{
 			"pattern": "riddleme.org",
