@@ -16,6 +16,12 @@
 		characters = Array(currentRiddle?.answer?.length || 0).fill('');
 		inputs = [];
 		errorMessage = '';
+
+		// Focus first input on next tick
+		setTimeout(() => {
+			const firstInput = document.querySelector('input[type="text"]') as HTMLInputElement;
+			firstInput?.focus();
+		}, 0);
 	});
 
 	function handleInput(index: number, event: Event) {
@@ -30,23 +36,31 @@
 
 			// Move to next input automatically
 			if (index < answerLength - 1) {
-				inputs[index + 1]?.focus();
+				// Find next input by querying the DOM
+				const nextInput = input.parentElement?.children[index + 1] as HTMLInputElement;
+				nextInput?.focus();
 			}
 		}
 	}
 
 	function handleKeydown(index: number, event: KeyboardEvent) {
 		if (event.key === 'Backspace') {
-			if (characters[index] === '' && index > 0) {
-				// Move to previous input if current is empty
-				inputs[index - 1]?.focus();
-			} else {
+			event.preventDefault();
+			if (characters[index] !== '') {
+				// Clear current input
 				characters[index] = '';
+			} else if (index > 0) {
+				// Move to previous input and clear it
+				const prevInput = (event.target as HTMLInputElement).parentElement?.children[index - 1] as HTMLInputElement;
+				characters[index - 1] = '';
+				prevInput?.focus();
 			}
 		} else if (event.key === 'ArrowLeft' && index > 0) {
-			inputs[index - 1]?.focus();
+			const prevInput = (event.target as HTMLInputElement).parentElement?.children[index - 1] as HTMLInputElement;
+			prevInput?.focus();
 		} else if (event.key === 'ArrowRight' && index < answerLength - 1) {
-			inputs[index + 1]?.focus();
+			const nextInput = (event.target as HTMLInputElement).parentElement?.children[index + 1] as HTMLInputElement;
+			nextInput?.focus();
 		} else if (event.key === 'Enter') {
 			handleNext();
 		}
