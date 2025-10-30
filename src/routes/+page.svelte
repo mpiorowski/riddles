@@ -2,35 +2,85 @@
 	import riddles from '$lib/riddles.json';
 
 	let currentIndex = $state(0);
-	let userAnswer = $state('');
 	let errorMessage = $state('');
+	let inputs: HTMLInputElement[] = $state([]);
 
 	const currentRiddle = $derived(riddles[currentIndex]);
 	const isLastRiddle = $derived(currentRiddle?.isLocation === true);
+	const answerLength = $derived(currentRiddle?.answer?.length || 0);
+
+	let characters = $state<string[]>([]);
+
+	$effect(() => {
+		// Reset characters when riddle changes
+		characters = Array(currentRiddle?.answer?.length || 0).fill('');
+		inputs = [];
+		errorMessage = '';
+	});
+
+	function handleInput(index: number, event: Event) {
+		const input = event.target as HTMLInputElement;
+		let value = input.value.toLowerCase();
+
+		// Take only the last character if multiple were pasted or typed
+		if (value.length > 0) {
+			const newChar = value.slice(-1);
+			characters[index] = newChar;
+			input.value = newChar;
+
+			// Move to next input automatically
+			if (index < answerLength - 1) {
+				inputs[index + 1]?.focus();
+			}
+		}
+	}
+
+	function handleKeydown(index: number, event: KeyboardEvent) {
+		if (event.key === 'Backspace') {
+			if (characters[index] === '' && index > 0) {
+				// Move to previous input if current is empty
+				inputs[index - 1]?.focus();
+			} else {
+				characters[index] = '';
+			}
+		} else if (event.key === 'ArrowLeft' && index > 0) {
+			inputs[index - 1]?.focus();
+		} else if (event.key === 'ArrowRight' && index < answerLength - 1) {
+			inputs[index + 1]?.focus();
+		} else if (event.key === 'Enter') {
+			handleNext();
+		}
+	}
+
+	function handlePaste(event: ClipboardEvent) {
+		event.preventDefault();
+		const pastedText = event.clipboardData?.getData('text').toLowerCase() || '';
+
+		for (let i = 0; i < Math.min(pastedText.length, answerLength); i++) {
+			characters[i] = pastedText[i];
+		}
+
+		// Focus the last filled input or the next empty one
+		const nextIndex = Math.min(pastedText.length, answerLength - 1);
+		inputs[nextIndex]?.focus();
+	}
 
 	function handleNext() {
 		if (isLastRiddle) {
 			return;
 		}
 
-		// Normalize answers for comparison (trim, lowercase)
-		const normalizedAnswer = userAnswer.trim().toLowerCase();
+		const userAnswer = characters.join('').toLowerCase();
 		const correctAnswer = currentRiddle.answer?.toLowerCase();
 
-		if (normalizedAnswer === correctAnswer) {
+		if (userAnswer === correctAnswer) {
 			// Correct answer, move to next riddle
 			currentIndex++;
-			userAnswer = '';
 			errorMessage = '';
 		} else {
 			// Wrong answer
 			errorMessage = 'Incorrect answer, try again!';
-		}
-	}
-
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter') {
-			handleNext();
+			// Shake animation could be added here
 		}
 	}
 </script>
@@ -47,22 +97,28 @@
 			</div>
 
 			{#if !isLastRiddle}
-				<div class="form-control mb-6">
-					<input
-						type="text"
-						placeholder="Enter your answer..."
-						class="input input-bordered w-full text-base sm:text-lg h-14 sm:h-16"
-						bind:value={userAnswer}
-						onkeydown={handleKeydown}
-						autocomplete="off"
-						autocorrect="off"
-						autocapitalize="off"
-						spellcheck="false"
-					/>
+				<div class="mb-6">
+					<div class="flex justify-center gap-2 sm:gap-3 flex-wrap">
+						{#each Array(answerLength) as _, index}
+							<input
+								type="text"
+								class="input input-bordered w-12 h-12 sm:w-14 sm:h-14 text-center text-xl sm:text-2xl font-bold uppercase"
+								bind:this={inputs[index]}
+								value={characters[index]}
+								oninput={(e) => handleInput(index, e)}
+								onkeydown={(e) => handleKeydown(index, e)}
+								onpaste={handlePaste}
+								autocomplete="off"
+								autocorrect="off"
+								autocapitalize="off"
+								spellcheck="false"
+							/>
+						{/each}
+					</div>
 					{#if errorMessage}
-						<label class="label">
-							<span class="label-text-alt text-error text-base">{errorMessage}</span>
-						</label>
+						<div class="text-center mt-4">
+							<span class="text-error text-base font-semibold">{errorMessage}</span>
+						</div>
 					{/if}
 				</div>
 
